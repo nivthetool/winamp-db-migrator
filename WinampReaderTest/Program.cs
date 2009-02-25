@@ -38,7 +38,7 @@ namespace WinampReaderTest
 			}
             using (var table = new Table(args[0]))
             {
-                Console.WriteLine("Table {0} contains {1} entries", table.Filename, table.Index.NumEntries);
+                Console.WriteLine("Table {0} contains {1} entries", table.Filename, table.NumFiles);
                 var items = new RecordEnumerator(table);
                 foreach (Record record in items)
                 {
@@ -50,7 +50,7 @@ namespace WinampReaderTest
                     Console.WriteLine("Rating: {0}", record.GetFieldByType(MetadataField.Rating));
                     Console.WriteLine();                    
                 }
-                Console.WriteLine("Reading done, {0} out of {1} items scanned", count, table.Index.NumEntries);
+                Console.WriteLine("Reading done, {0} out of {1} items scanned", count, table.NumFiles);
             }
             
             Console.ReadLine();

@@ -25,6 +25,9 @@ using System.IO;
 
 namespace WinampReader
 {
+	/// <summary>
+	/// Represents a single record (row) in the database table.
+	/// </summary>
     public class Record
     {
         private List<Field> fields;
@@ -40,9 +43,18 @@ namespace WinampReader
                 var f = Field.GetField(reader, curPos);
                 curPos = f.NextFieldPos;
                 fields.Add(f);
-            }            
+            }
         }
 
+		/// <summary>
+		/// Gets the value for the specified metadata field
+		/// </summary>
+		/// <param name="field">
+		/// A <see cref="MetadataField"/> specifying which metadata value to retrieve.
+		/// </param>
+		/// <returns>
+		/// A <see cref="Field"/> containing the actual data.
+		/// </returns>
         public Field GetFieldByType(MetadataField field)
         {
             if (fieldMapping.ContainsKey(field))
@@ -50,6 +62,15 @@ namespace WinampReader
             return null;
         }
 
+		/// <summary>
+		/// Gets the value from the specified field id
+		/// </summary>
+		/// <param name="id">
+		/// A <see cref="System.UInt64"/> 
+		/// </param>
+		/// <returns>
+		/// A <see cref="Field"/>
+		/// </returns>
         public Field GetFieldById(ulong id)
         {
             foreach (var field in Fields)
@@ -57,6 +78,9 @@ namespace WinampReader
                     return field;
             return null;
         }
+		/// <value>
+		/// Gets an enumerator over all the available fields in this record
+		/// </value>
         public IEnumerable<Field> Fields
         {
             get { return fields; }

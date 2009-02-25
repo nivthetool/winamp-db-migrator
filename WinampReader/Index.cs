@@ -24,6 +24,9 @@ using System.Collections.Generic;
 
 namespace WinampReader
 {	
+	/// <summary>
+	/// Holds an index of a Winamp media library database
+	/// </summary>
 	public class Index
 	{
 		private static string INDEX_SIGNATURE = "NDEINDEX";
@@ -32,6 +35,12 @@ namespace WinampReader
 		public Int32 NumEntries {get; private set; }
 		public string Filename { get; private set; }
 		public int Id { get; private set; }
+		/// <summary>
+		/// Loads the index from the specified file 
+		/// </summary>
+		/// <param name="filename">
+		/// The path + filename of the index
+		/// </param>
 		public Index(string filename)
 		{
 			Filename = filename;
@@ -65,6 +74,17 @@ namespace WinampReader
 			return true;
 		}
 		
+		/// <summary>
+		/// Gets a pointer to the record at the specified location in the index.
+		/// </summary>
+		/// <remarks>
+		/// Index 0 is where the special field column is (mapping of metadata to record locations).
+		/// Index 1 and forward is the actual entries in the database tables
+		/// </remarks>
+		/// <param name="Idx">
+		/// The number of the record pointer to retrieve.
+		/// </param>
+		/// <returns>A pointer to the correct location in the table where the specified record can be found.</returns>
 		public int GetIndex(int Idx)
 		{
 			if (Idx < 0 || (Idx*2) > _indexTable.Length)
@@ -72,6 +92,9 @@ namespace WinampReader
 			return _indexTable[Idx*2];
 		}
 		
+		/// <summary>
+		/// Dumps the index to stdout. Useful for debugging only
+		/// </summary>
 		public void Dump()
 		{
 			for (int i = 0; i < NumEntries; i++)
