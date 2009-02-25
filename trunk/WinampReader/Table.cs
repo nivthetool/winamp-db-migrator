@@ -27,8 +27,19 @@ using System.Diagnostics;
 
 namespace WinampReader
 {
+	/// <summary>
+	/// This is the main class of this library. It handles reading a table from disk
+	/// and holds the index.
+	/// </summary>
 	public class Table : IDisposable
 	{
+		/// <summary>
+		/// Create a new Table instance from the database and loads its corresponding index file
+		/// </summary>
+		/// <param name="filename">
+		/// A <see cref="System.String"/> with the full path to the winamp (.dat) database. A corresponding .idx file
+		/// should also be located in that same directory. 
+		/// </param>
 		public Table(string filename)
 		{
             Filename = filename;
@@ -45,9 +56,21 @@ namespace WinampReader
                 FieldMappings.Add(col.Value, col.Id);
 		}
 
+		/// <value>
+		/// Gets the index for this db
+		/// </value>
         public Index Index { get; private set; }
+		/// <value>
+		/// Gets the reader which is used to read data from the db.
+		/// </value>
         public BinaryReader Reader { get; private set; }
+		/// <value>
+		/// Gets the filename from which this table was loaded.
+		/// </value>
         public string Filename { get; private set; }
+		/// <value>
+		/// Gets the number of files in the media library
+		/// </value>
         public int NumFiles { get { return Index.NumEntries - 2; } }
 
         /// <summary>
@@ -73,6 +96,10 @@ namespace WinampReader
         #endregion
     }
 
+	/// <summary>
+	/// Holds a mapping between metadata fields ("artist", "album", "title", etc.) and
+	/// a pointer to where they are located within each record ("row") in the table.
+	/// </summary>
     public class MetadataFieldMapping : Dictionary<MetadataField, uint>
     {
         /// <summary>

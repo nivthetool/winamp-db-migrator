@@ -25,16 +25,31 @@ using System.Text;
 
 namespace WinampReader
 {
+	/// <summary>
+	/// Used to enumerate over all records (rows) in the database table.
+	/// </summary>
     public class RecordEnumerator : IEnumerable<Record>
     {
+		/// <value>
+		/// Gets or sets the table where records will be read from.
+		/// </value>
         public Table ParentTable { get; set; }
+		/// <summary>
+		/// Creates a new RecordEnumerator which will read from the specified table
+		/// </summary>
+		/// <param name="parentTable">
+		/// A <see cref="Table"/> from which records will be read from.
+		/// </param>
         public RecordEnumerator(Table parentTable)
         {
             this.ParentTable = parentTable;
         }
         
         #region IEnumerable<Record> Members
-        public IEnumerator<Record> GetEnumerator()
+		/// <summary>
+		/// Gets an enumerator over the records in the <see cref="ParentTable"/>.
+		/// </summary>
+		public IEnumerator<Record> GetEnumerator()
         {
             for (int idx = 2; idx < ParentTable.Index.NumEntries; idx++)
             {
@@ -46,7 +61,10 @@ namespace WinampReader
 
         #region IEnumerable Members
 
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+		/// <summary>
+		/// Gets an enumerator over the records in the <see cref="ParentTable"/>
+		/// </summary>
+		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
         }

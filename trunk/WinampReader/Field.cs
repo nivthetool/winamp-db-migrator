@@ -27,14 +27,38 @@ using System.Diagnostics;
 
 namespace WinampReader
 {
+	/// <summary>
+	/// Base class for all fields in a record. A field is a single metadata, such as "artist", "album" or "title".
+	/// </summary>
     public abstract class Field
     {
+		/// <value>
+		/// Gets the ID of this field
+		/// </value>
         public uint Id { get; private set; }
+		/// <value>
+		/// Gets the max size this field can occupy on disk
+		/// </value>
         public int MaxSizeOnDisk { get; private set; }
+		/// <value>
+		/// Gets the location of the next field in this record.
+		/// </value>
         public int NextFieldPos { get; private set; }
+		/// <value>
+		/// Gets the location of the previous field in this record.
+		/// </value>
         public int PrevFieldPos { get; private set; }
+		/// <value>
+		/// Gets the type of the field (string, int, filename, etc.)
+		/// </value>
         public FieldType FieldType { get; protected set; }        
         
+		/// <summary>
+		/// Reads the basic (common) properties from the table
+		/// </summary>
+		/// <param name="reader">
+		/// A <see cref="BinaryReader"/> that will be used to read data. The reader should already be positioned at the correct location.
+		/// </param>
         protected void ReadBasicProperties(BinaryReader reader)
         {
             Id = reader.ReadByte();
@@ -44,7 +68,16 @@ namespace WinampReader
             PrevFieldPos = reader.ReadInt32();
         }
 
-        public static Field GetField(BinaryReader reader, Int32 position)
+		/// <summary>
+		/// Gets the field located at the specified position
+		/// </summary>
+		/// <param name="reader">
+		/// A <see cref="BinaryReader"/> which will be used to read data. 
+		/// </param>
+		/// <param name="position">
+		/// The position in the stream where the Field will be read from.
+		/// </param>
+		public static Field GetField(BinaryReader reader, Int32 position)
         {
             reader.BaseStream.Seek(position + sizeof(byte), SeekOrigin.Begin);
             byte b = reader.ReadByte();
@@ -63,6 +96,7 @@ namespace WinampReader
                     retval = new ColumnField(reader);
                     break;
                 case FieldType.Index:
+				    Console.Error.WriteLine("ERR: Unsupported Field Type: " + fType);
                     Debugger.Break();
                     break;
                 case FieldType.String:
@@ -81,18 +115,27 @@ namespace WinampReader
                     retval = new StringField(reader);
                     break;
                 default:
+				    Console.Error.WriteLine("ERR: Unsupported Field Type: " + fType);
                     Debugger.Break();
                     break;
             }
             return retval;
         }
-        public abstract object GetValue();
+		/// <summary>
+		/// Gets the actual value for this field. Note that derived classes typically have type safe
+		/// properties to access the data.
+		/// </summary>
+		public abstract object GetValue();
+		
         public override string ToString()
         {
             return String.Format("{0}", GetValue());
         }
     }
 
+	/// <summary>
+	/// Represents a field in string format
+	/// </summary>
     public class StringField : Field
     {
         public StringField(BinaryReader reader)
@@ -105,6 +148,9 @@ namespace WinampReader
             Value = Encoding.Unicode.GetString(data, 2, data.Length - 2);
         }
 
+		/// <value>
+		/// Gets the field data
+		/// </value>
         public string Value { get; set; }
 
         public override object GetValue()
@@ -113,6 +159,9 @@ namespace WinampReader
         }
     }
 
+	/// <summary>
+	/// Represents a field which holds an integer
+	/// </summary>
     public class IntegerField : Field
     {
         public IntegerField(BinaryReader reader)
@@ -122,13 +171,20 @@ namespace WinampReader
                 Debugger.Break();
             Value = reader.ReadInt32();
         }
+		/// <value>
+		/// Gets the field data
+		/// </value>
         public int Value { get; set; }
-        public override object GetValue()
+
+		public override object GetValue()
         {
             return Value;
         }
     }
 
+	/// <summary>
+	/// Represents a field which holds a date and time.
+	/// </summary>
     public class DatetimeField : Field
     {
         private static DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Unspecified);
@@ -138,24 +194,36 @@ namespace WinampReader
             int timestamp = reader.ReadInt32();
             Value = Epoch + TimeSpan.FromSeconds(timestamp);
         }
+		/// <value>
+		/// Gets the field data
+		/// </value>
         public DateTime Value { get; set; }
+		
         public override object GetValue()
         {
             return Value;
         }
     }
+	
+	/// <summary>
+	/// Special field used by the first record. It holds the name 
+	/// of the metadata fields which are available in all other
+	/// records.
+	/// </summary>
     public class ColumnField : Field
     {
         public ColumnField(BinaryReader reader)
         {
             ReadBasicProperties(reader);
             Byte myType = reader.ReadByte();
-            bool indexUnique = reader.ReadByte() != 0;
+			bool indexUnique = reader.ReadByte() != 0;
             var strLength = reader.ReadByte();
             var data = reader.ReadBytes(strLength);
             Value = System.Text.Encoding.ASCII.GetString(data);
         }
-        
+        /// <value>
+        /// Gets the name of the metadata field
+        /// </value>
         public string Value { get; private set; }
         
         public override object GetValue()
@@ -163,6 +231,10 @@ namespace WinampReader
             return Value;
         }
     }
+	
+	/// <summary>
+	/// All the supported field types
+	/// </summary>
     public enum FieldType : byte
     {
         Column      = 0,
