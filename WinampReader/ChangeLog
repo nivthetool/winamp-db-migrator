@@ -1,0 +1,5 @@
+2009-02-25  Isak Savo <isak.savo@gmail.com>
+
+	* First import to svn: Only supports reading of data and outputting
+	to sdtout
+

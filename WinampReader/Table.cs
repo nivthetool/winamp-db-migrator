@@ -1,0 +1,121 @@
+// Table.cs
+//
+//  Copyright (C) 2009 [name of author]
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+// 
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+//
+//
+
+using System;
+using System.Linq;
+using System.IO;
+using System.Collections.Generic;
+using System.Text;
+using System.Diagnostics;
+
+namespace WinampReader
+{
+	public class Table : IDisposable
+	{
+		public Table(string filename)
+		{
+            Filename = filename;
+			Reader = new BinaryReader(File.OpenRead(filename));
+            byte[] data = Reader.ReadBytes("NDETABLE".Length);
+            if (Encoding.ASCII.GetString(data) != "NDETABLE")
+                throw new ArgumentException("File is not a valid WinAmp media library database");
+            string indexName = Path.ChangeExtension(filename, ".idx");
+            Index = new Index(indexName);
+
+            var fieldPointerRecord = new Record(Reader, Index.GetIndex(0), null);
+            FieldMappings = new MetadataFieldMapping();
+            foreach (ColumnField col in fieldPointerRecord.Fields)
+                FieldMappings.Add(col.Value, col.Id);
+		}
+
+        public Index Index { get; private set; }
+        public BinaryReader Reader { get; private set; }
+        public string Filename { get; private set; }
+        public int NumFiles { get { return Index.NumEntries - 2; } }
+
+        /// <summary>
+        /// Gets the mapping between a particular field and it's Id (position) within a record
+        /// </summary>
+        public MetadataFieldMapping FieldMappings { get; private set; }
+
+        #region IDisposable Members
+
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+
+        public void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Reader.Close();
+                Reader = null;
+            }
+        }
+        #endregion
+    }
+
+    public class MetadataFieldMapping : Dictionary<MetadataField, uint>
+    {
+        /// <summary>
+        /// Adds the specified key to the dictionary. The string key is automatically converted to 
+        /// a MetadataField enum
+        /// </summary>
+        /// <param name="key">String representation of key name</param>
+        /// <param name="value">The ID of the field</param>
+        public void Add(string key, uint value)
+        {
+            try
+            {
+                var field = (MetadataField)Enum.Parse(typeof(MetadataField), key, true);
+                this.Add(field, value);
+            }
+            catch { }
+        }
+    }
+    /// <summary>
+    /// Represents a particular metadata field in a record
+    /// </summary>
+    public enum MetadataField
+    {
+        Album,
+        AlbumArtist,
+        Artist,
+        Bitrate,
+        Bpm,
+        Comment,
+        Composer,
+        Filename,
+        Filesize,
+        Filetipe,
+        Genre,
+        LastPlay,
+        Length,
+        PlayCount,
+        Publisher,
+        Rating,
+        Title,
+        TrackNo,
+        Tracks,
+        Type,
+        Year,
+    }
+}
