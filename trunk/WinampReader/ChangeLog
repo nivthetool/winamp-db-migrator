@@ -1,7 +1,9 @@
-2009-02-25  Isak Savo <isak.savo@gmail.com> 
+2009-03-08  Isak Savo <isak.savo@gmail.com>
 
+	* *.cs: Add my name to copyright header
 	
-
+	* Table.cs: Add WinampDatabase class to wrap filenames into a single class
+	
 2009-02-25  Isak Savo <isak.savo@gmail.com>
 
 	* First import to svn: Only supports reading of data and outputting
