@@ -1,6 +1,6 @@
 // Table.cs
 //
-//  Copyright (C) 2009 [name of author]
+//  Copyright (C) 2009 Isak Savo <isak.savo@gmail.com>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -145,4 +145,37 @@ namespace WinampReader
         Type,
         Year,
     }
+	
+	public class WinampDatabase
+	{		
+		/// <summary>
+		/// Creates a new instance if the WinampDatabase class 
+		/// </summary>
+		/// <param name="dbFileName">Full path to the database file. Index file is assumed to be in the same directory, but with the .idx extension</param>
+		public WinampDatabase(string dbFileName)
+		{
+			Database = dbFileName;
+			Index = Path.ChangeExtension(dbFileName, ".idx");
+		}
+		
+		/// <summary>
+		/// Creates a new instance if the WinampDatabase class 
+		/// </summary>
+		/// <param name="dbFileName">Full path to the database file</param>
+		/// <param name="dbIndexName">Full path to the index file</param>
+		public WinampDatabase(string dbFileName, string dbIndexName)
+		{
+			Database = dbFileName;
+			Index = dbIndexName;
+		}
+		
+		///<summary>
+		/// The filename of the actual database file 
+		///</summary>
+		public string Database { get; set; }
+		///<summary>
+		/// The filename of the index file for the database 
+		///</summary>
+		public string Index { get; set; }
+	}
 }
