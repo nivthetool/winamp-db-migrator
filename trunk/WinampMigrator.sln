@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual C# Express 2008
+# Visual Studio 2008
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinampReader", "WinampReader\WinampReader.csproj", "{F33C5BCE-74B5-42B7-9231-B5611B277E63}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinampReaderTest", "WinampReaderTest\WinampReaderTest.csproj", "{CD73EDC5-D4C2-4CA4-9E5C-036029BA7FDA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinampMigrator", "WinampMigrator\WinampMigrator.csproj", "{CD73EDC5-D4C2-4CA4-9E5C-036029BA7FDA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -20,7 +20,10 @@ Global
 		{F33C5BCE-74B5-42B7-9231-B5611B277E63}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F33C5BCE-74B5-42B7-9231-B5611B277E63}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
+	GlobalSection(MonoDevelopProperties) = preSolution
+		name = WinampReaderTest
+		version = 0.1
+		StartupItem = WinampReader\WinampReader.csproj
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

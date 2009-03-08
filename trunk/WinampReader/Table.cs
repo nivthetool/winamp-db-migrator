@@ -33,6 +33,7 @@ namespace WinampReader
 	/// </summary>
 	public class Table : IDisposable
 	{
+		private static string TABLE_SIGNATURE = "NDETABLE";
 		/// <summary>
 		/// Create a new Table instance from the database and loads its corresponding index file
 		/// </summary>
@@ -41,21 +42,31 @@ namespace WinampReader
 		/// should also be located in that same directory. 
 		/// </param>
 		public Table(string filename)
+			: this(new WinampDatabase(filename))
 		{
-            Filename = filename;
-			Reader = new BinaryReader(File.OpenRead(filename));
-            byte[] data = Reader.ReadBytes("NDETABLE".Length);
-            if (Encoding.ASCII.GetString(data) != "NDETABLE")
-                throw new ArgumentException("File is not a valid WinAmp media library database");
-            string indexName = Path.ChangeExtension(filename, ".idx");
-            Index = new Index(indexName);
+            
+		}
+
+		// <summary>
+		/// Create a new Table instance from the database and loads its corresponding index file
+		/// </summary>
+		/// <param name="db">
+		/// The object containing path information for the db and the index.
+		/// </param>
+		public Table(WinampDatabase db)
+		{
+			Filename = db.Database;
+			Reader = new BinaryReader(File.OpenRead(db.Database));
+            byte[] data = Reader.ReadBytes(TABLE_SIGNATURE.Length);
+            if (Encoding.ASCII.GetString(data) != TABLE_SIGNATURE)
+                throw new ArgumentException("File is not a valid WinAmp media library database", "db");
+            Index = new Index(db.Index);
 
             var fieldPointerRecord = new Record(Reader, Index.GetIndex(0), null);
             FieldMappings = new MetadataFieldMapping();
             foreach (ColumnField col in fieldPointerRecord.Fields)
                 FieldMappings.Add(col.Value, col.Id);
 		}
-
 		/// <value>
 		/// Gets the index for this db
 		/// </value>
@@ -73,24 +84,36 @@ namespace WinampReader
 		/// </value>
         public int NumFiles { get { return Index.NumEntries - 2; } }
 
-        /// <summary>
+        /// <value>
         /// Gets the mapping between a particular field and it's Id (position) within a record
-        /// </summary>
+        /// </value>
         public MetadataFieldMapping FieldMappings { get; private set; }
 
+		/// <summary>
+		/// Closes the database and index
+		/// </summary>
+		public void Close()
+		{
+			Dispose(true);
+		}
         #region IDisposable Members
 
-        public void Dispose()
+        void IDisposable.Dispose()
         {
             Dispose(true);
+			GC.SuppressFinalize(this);
         }
 
-        public void Dispose(bool disposing)
+		private bool disposed;
+        private void Dispose(bool disposing)
         {
+			if (disposed)
+				return;
             if (disposing)
             {
                 Reader.Close();
                 Reader = null;
+				Index = null;
             }
         }
         #endregion
@@ -168,14 +191,24 @@ namespace WinampReader
 			Database = dbFileName;
 			Index = dbIndexName;
 		}
-		
-		///<summary>
+				
+		///<value>
+		/// Gets a value indicating whether the database and index exists.
+		///</value>
+		public bool Exists
+		{
+			get 
+			{
+				return File.Exists(Database) && File.Exists(Index);
+			}
+		}
+		///<value>
 		/// The filename of the actual database file 
-		///</summary>
+		///</value>
 		public string Database { get; set; }
-		///<summary>
+		///<value>
 		/// The filename of the index file for the database 
-		///</summary>
+		///</value>
 		public string Index { get; set; }
 	}
 }
