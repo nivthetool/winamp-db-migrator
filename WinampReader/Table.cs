@@ -54,7 +54,7 @@ namespace WinampReader
 		/// The object containing path information for the db and the index.
 		/// </param>
 		public Table(WinampDatabase db)
-		{
+		{			
 			Filename = db.Database;
 			Reader = new BinaryReader(File.OpenRead(db.Database));
             byte[] data = Reader.ReadBytes(TABLE_SIGNATURE.Length);
@@ -84,6 +84,11 @@ namespace WinampReader
 		/// </value>
         public int NumFiles { get { return Index.NumEntries - 2; } }
 
+		/// <summary>
+		/// Gets an enumerator over all the records in this table.
+		/// </summary>
+		public RecordEnumerator Records { get { return new RecordEnumerator(this); } }
+		
         /// <value>
         /// Gets the mapping between a particular field and it's Id (position) within a record
         /// </value>
@@ -110,10 +115,11 @@ namespace WinampReader
 			if (disposed)
 				return;
             if (disposing)
-            {
+            {				
                 Reader.Close();
                 Reader = null;
 				Index = null;
+				disposed = true;
             }
         }
         #endregion
