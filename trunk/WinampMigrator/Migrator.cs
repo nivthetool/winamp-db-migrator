@@ -8,7 +8,9 @@ namespace WinampMigrator
 	public class Migrator
 	{
 		public static string ProgramName { get { return "winamp-migrator"; } }
-		private bool dryRun = true;		
+		private bool dryRun 			= true;		
+		private PlaycountUpdateMode playCountUpdateMode = PlaycountUpdateMode.Add;
+		private RatingUpdateMode ratingUpdateMode = RatingUpdateMode.OnlyEmpty;
 		private string bansheeDb;
 		private WinampDatabase databaseFiles;
 		
@@ -37,10 +39,17 @@ namespace WinampMigrator
 		
 		public void Migrate()
 		{
-			using (BansheeDatabase banshee = new BansheeDatabase(bansheeDb))
+			using (BansheeDatabase banshee = new BansheeDatabase(bansheeDb, (playCountUpdateMode == PlaycountUpdateMode.Overwrite)))
 			using (Table tbl = new Table(databaseFiles))
 			{
 				Logger.LogMessage(1, "Winamp DB successfully opened");
+				Logger.LogMessage(1, "Setting DryRun to {0}", dryRun);
+				Logger.LogMessage(1, "Setting PlayCountUpdateMode to: {0}", playCountUpdateMode);
+				Logger.LogMessage(1, "Setting RatingUpdateMode to: {0}", ratingUpdateMode);
+				Console.WriteLine("Press RETURN to migrate data or CTRL+C to abort now");
+				Console.ReadLine();
+				
+				banshee.DryRun = dryRun;
 				foreach (Record row in tbl.Records)
 				{
 					StringField title  = row.GetFieldByType(MetadataField.Title) as StringField;
@@ -56,8 +65,37 @@ namespace WinampMigrator
 					{
 						Logger.LogMessage(0, "Failed to find banshee track for {0} - {1} ({2})", artist, title, album);
 						continue;
-					}
-					Logger.LogMessage(2, "Found Banshee Track ({0}) for {1} - {2} ({2})", track, artist, title, album);
+					}					
+					IntegerField ratingField = row.GetFieldByType(MetadataField.Rating) as IntegerField;
+					IntegerField playcountField = row.GetFieldByType(MetadataField.PlayCount) as IntegerField;
+					int rating = 0;
+					int playcount = 0;
+					if (ratingField != null)
+						rating = ratingField.Value;
+					if (playcountField != null)
+						playcount = playcountField.Value;
+					bool updateRating = false;
+					bool updatePlaycount = false;
+					
+					if (playCountUpdateMode != PlaycountUpdateMode.Ignore)
+						updatePlaycount = true;
+					if (ratingUpdateMode == RatingUpdateMode.OnlyEmpty)
+						updateRating = !track.HasRating;
+					else if (ratingUpdateMode == RatingUpdateMode.Overwrite)
+						updateRating = rating > 0;
+					else if (ratingUpdateMode == RatingUpdateMode.OverwriteAndClear)
+						updateRating = true;
+					bool success = true;	
+					if (updatePlaycount && updateRating)
+						success = banshee.UpdateTrack(track.Id, rating, playcount);
+					else if (updatePlaycount)
+						success = banshee.UpdateTrackPlaycount(track.Id, playcount);
+					else if (updateRating)
+						success = banshee.UpdateTrackRating(track.Id, rating);
+					if (success)
+						Logger.LogMessage(1, "SUCCEEDED: Updating {0}-{1}", artist.Value, title.Value);
+					else
+						Logger.LogMessage(0, "FAILED: Updating {0}-{1}", artist.Value, title.Value);					
 				}
 			}
 		}
@@ -90,6 +128,36 @@ namespace WinampMigrator
 				{ "dry-run", "Don't write to Banshee DB, only simulate", v => dryRun = true },
 				{ "h|help", "Show this help and then exit", v => show_help = (v != null) },
 				{ "banshee-db=", "Specify the banshee db (default is $XDG_CONFIG_HOME/banshee-1/banshee.db)", v => bansheeDb = v },
+				{ "update-playcount=", "Specifies how & if banshee's playcount is with updated ('ignore', 'overwrite', 'add' (default))", 
+					v => 
+					{
+						if (v == null)
+							return;			
+						string mode = v.ToString().ToLower();
+						if (mode == "ignore")
+							playCountUpdateMode = PlaycountUpdateMode.Ignore;
+						else if (mode == "overwrite")
+							playCountUpdateMode = PlaycountUpdateMode.Overwrite;
+						else
+							playCountUpdateMode = PlaycountUpdateMode.Add;
+					}
+				},
+				{ "update-rating=", "Specifies how & if banshee's rating is update ('ignore', 'overwrite' or 'empty' (default))", 
+					v => 
+					{
+						if (v == null)
+							return;
+						string mode = v.ToString().ToLower();
+						if (mode == "ignore")
+							ratingUpdateMode = RatingUpdateMode.Ignore;
+						else if (mode == "overwrite")
+							ratingUpdateMode = RatingUpdateMode.Overwrite;
+						else if (mode == "overwriteandclear")
+							ratingUpdateMode = RatingUpdateMode.OverwriteAndClear;
+						else
+							ratingUpdateMode = RatingUpdateMode.OnlyEmpty;
+					}
+				},
 				{ "V|verbose", "Increase verbosity (specify multiple times to increase further)", v => { if (v != null) Logger.Verbosity++; } },
 			};
 			
@@ -127,6 +195,7 @@ namespace WinampMigrator
 				Console.Error.WriteLine("The specified winamp database does not exist");
 				Environment.Exit((int)ExitCodes.InvalidArguments);
 			}
+
 		}
 		
 		private void ShowOptionError(string errMessage)
@@ -141,8 +210,17 @@ namespace WinampMigrator
 			Console.WriteLine("Usage: {0} [OPTIONS] <WinampDb> [<WinampDbIndex>]", ProgramName);
 			Console.WriteLine(" Where OPTIONS is one or more of the following:");
 			opts.WriteOptionDescriptions(Console.Out);
+			Console.WriteLine(" Ratings can be updated in four modes:");
+			Console.WriteLine("  - Ignore: 		no updates to rating will be done");
+			Console.WriteLine("  - Overwrite: 	All ratings found in Winamp will be forced into Banshee");
+			Console.WriteLine("  - OverwriteAndClear: Same as 'Overwrite' but will also clear ratings in Banshee where no rating exists in Winamp");
+			Console.WriteLine("  - OnlyEmpty:	Only tracks which has no rating in banshee will be updated. (default)");
+			Console.WriteLine(" PlayCount can be updated in three modes:");
+			Console.WriteLine("  - Ignore:		no updates to playcount will be done");
+			Console.WriteLine("  - Overwrite: 	Winamp playcount will be forced into Banshee");
+			Console.WriteLine("  - Add:			Winamp playcount will be added to the Banshee playcount (default)");
 			Console.WriteLine();
-			Console.WriteLine("If no index is specified, it is assumed to reside in the same directory as the Winamp DB and have the extension .idx");
+			Console.WriteLine("If no WinampDbIndex is specified, it is assumed to reside in the same directory as the WinampDB and have the extension .idx");
 		}
 		
 		static void Main(string[] args)
@@ -166,6 +244,21 @@ namespace WinampMigrator
 			InvalidArguments,
 			InvalidWinampDatabase,
 			InvalidBansheeDatabase,
+		}
+				
+		private enum PlaycountUpdateMode
+		{
+			Add,
+			Overwrite,
+			Ignore,
+		}
+	
+		private enum RatingUpdateMode
+		{
+			OnlyEmpty,
+			Overwrite,
+			OverwriteAndClear,
+			Ignore,			
 		}
 	}
 	
