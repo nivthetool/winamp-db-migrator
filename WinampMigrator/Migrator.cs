@@ -8,7 +8,8 @@ namespace WinampMigrator
 	public class Migrator
 	{
 		public static string ProgramName { get { return "winamp-migrator"; } }
-		private bool dryRun 			= true;		
+		private bool dryRun		= true;
+		private bool dumpData 	= false;		
 		private PlaycountUpdateMode playCountUpdateMode = PlaycountUpdateMode.Add;
 		private RatingUpdateMode ratingUpdateMode = RatingUpdateMode.OnlyEmpty;
 		private string bansheeDb;
@@ -34,9 +35,38 @@ namespace WinampMigrator
 			{
 				Console.Error.WriteLine("Invalid winamp database specified: " + ex.Message);
 				Environment.Exit((int)ExitCodes.InvalidWinampDatabase);
-			}			
+			}
+			if (dumpData)
+			{
+				DumpWinampData();
+				Environment.Exit((int)ExitCodes.NoError);
+			}
 		}
 		
+		public void DumpWinampData()
+		{
+			using (BansheeDatabase banshee = new BansheeDatabase(bansheeDb, (playCountUpdateMode == PlaycountUpdateMode.Overwrite)))
+			using (Table tbl = new Table(databaseFiles))
+			{
+				foreach (Record row in tbl.Records)
+				{					
+					StringField title  = row.GetFieldByType(MetadataField.Title) as StringField;
+					StringField artist = row.GetFieldByType(MetadataField.Artist) as StringField;
+					StringField album  = row.GetFieldByType(MetadataField.Album) as StringField;
+					StringField file   = row.GetFieldByType(MetadataField.Filename) as StringField;
+					IntegerField rating = row.GetFieldByType(MetadataField.Rating) as IntegerField;
+					IntegerField playcount = row.GetFieldByType(MetadataField.PlayCount) as IntegerField;
+					Console.WriteLine("BEGIN TRACK");
+					Console.WriteLine("File: {0}", file != null ? file.Value : "");
+					Console.WriteLine("Title: {0}", title != null ? title.Value : "");
+					Console.WriteLine("Artist: {0}", artist != null ? artist.Value : "");
+					Console.WriteLine("Album: {0}", album != null ? album.Value : "");
+					Console.WriteLine("Rating: {0}", rating != null ? rating.Value : -1);
+					Console.WriteLine("Playcount: {0}", playcount != null ? playcount.Value : 0);
+					
+				}
+			}
+		}
 		public void Migrate()
 		{
 			using (BansheeDatabase banshee = new BansheeDatabase(bansheeDb, (playCountUpdateMode == PlaycountUpdateMode.Overwrite)))
@@ -127,6 +157,7 @@ namespace WinampMigrator
 			{
 				{ "dry-run", "Don't write to Banshee DB, only simulate", v => dryRun = true },
 				{ "h|help", "Show this help and then exit", v => show_help = (v != null) },
+				{ "dump-data", "Dump WinAmp data to stdout and exit", v => dumpData = true },
 				{ "banshee-db=", "Specify the banshee db (default is $XDG_CONFIG_HOME/banshee-1/banshee.db)", v => bansheeDb = v },
 				{ "update-playcount=", "Specifies how & if banshee's playcount is with updated ('ignore', 'overwrite', 'add' (default))", 
 					v => 
