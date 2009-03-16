@@ -11,7 +11,7 @@ namespace WinampMigrator
 	{	
 		IDbConnection dbConn;
 		List<IDbCommand> commands = new List<IDbCommand>();
-		IDbCommand selectCmd, selectAlbumCmd, selectArtistCmd;
+		IDbCommand selectCmd, select2Cmd, selectAlbumCmd, selectArtistCmd;
 		IDbCommand updateAllCmd, updateRatingCmd, updatePlaycountCmd;
 		
 		public BansheeDatabase(string dbFile)
@@ -47,6 +47,12 @@ namespace WinampMigrator
 			selectCmd.Parameters.Add(new SqliteParameter("@artist", DbType.Int32));
 			selectCmd.Parameters.Add(new SqliteParameter("@album", DbType.Int32));			
 			commands.Add(selectCmd);
+			
+			select2Cmd = dbConn.CreateCommand();
+			select2Cmd.CommandText = "SELECT TrackID, PlayCount, Rating FROM CoreTracks WHERE Title = @title AND ArtistID = @artist";
+			select2Cmd.Parameters.Add(new SqliteParameter("@title", DbType.String));
+			select2Cmd.Parameters.Add(new SqliteParameter("@artist", DbType.Int32));
+			commands.Add(select2Cmd);
 			
 			selectArtistCmd = dbConn.CreateCommand();
 			selectArtistCmd.CommandText = "SELECT ArtistID From CoreArtists WHERE Name = @name";
@@ -85,6 +91,18 @@ namespace WinampMigrator
 			commands.Add(updateRatingCmd);			
 		}
 		
+		public int NumberOfTracks 
+		{
+			get
+			{
+				using (var cmd = dbConn.CreateCommand())
+				{
+					cmd.CommandText = "SELECT Count(*) FROM CoreTracks";
+					return (int) cmd.ExecuteScalar();
+				}
+			}
+		}
+		
 		public string DatabaseFile { get; private set; }
 		/// <summary>
 		/// Creates a copy of the current banshee database. The name of the copy is returned
@@ -114,6 +132,9 @@ namespace WinampMigrator
 		/// </value>
 		public bool DryRun { get; set; }
 		
+		/// <summary>
+		/// Gets the banshee track with the specified title, artist and album
+		/// </summary>
 		public BansheeTrack GetTrack(string title, string artist, string album)
 		{
 			int artistId = GetArtistId(artist);
@@ -135,10 +156,41 @@ namespace WinampMigrator
 					var rating = reader.GetInt32(2);					
 					return new BansheeTrack(trackId, rating > 0, playCount > 0);
 				}
+				else
+					Logger.LogMessage(2, "No data available in SQLReader");
 			}
 			return null;
 		}
 		
+		/// <summary>
+		/// Gets the banshee track with the specified title and artist. See also <see cref="GetTrack(string,string,string)"/> for a safer version of this method
+		/// </summary>
+		/// <remarks>
+		/// Whenever possible, you should use the method which also matches the album name. This method cannot distinguish between two versions
+		/// of the same track (by the same artist) if they are e.g. on two different albums.
+		/// </remarks>
+		public BansheeTrack GetTrack(string title, string artist)
+		{
+			int artistId = GetArtistId(artist);
+			if (artistId < 0)
+				return null;
+			
+			Logger.LogMessage(2,"Fetching Track Info for {0}, {1}", title, artistId);
+			
+			((IDataParameter)selectCmd.Parameters["@title"]).Value = title;
+			((IDataParameter)selectCmd.Parameters["@artist"]).Value = artistId;
+			using (var reader = selectCmd.ExecuteReader())
+			{
+				if (reader.Read())
+				{
+					var trackId = reader.GetInt32(0);
+					var playCount = reader.GetInt32(1);
+					var rating = reader.GetInt32(2);					
+					return new BansheeTrack(trackId, rating > 0, playCount > 0);
+				}
+			}
+			return null;
+		}
 		/// <summary>
 		/// Updates the track information with the specified rating and playcount
 		/// </summary>
@@ -278,6 +330,7 @@ namespace WinampMigrator
 		public int Id { get; private set; }
 		public bool HasRating { get; private set; }
 		public bool HasPlayCount { get; private set; }
+		
 		public override string ToString ()
 		{
 			return string.Format("[BansheeTrack: Id={0}, HasRating={1}, HasPlayCount={2}]", Id, HasRating, HasPlayCount);
