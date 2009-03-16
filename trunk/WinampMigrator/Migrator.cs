@@ -17,6 +17,7 @@ namespace WinampMigrator
 		private string bansheeDb;
 		private WinampDatabase databaseFiles;
 		
+		
 		public Migrator(string[] args)
 		{
 			ParseCommandLine(args);
@@ -71,6 +72,8 @@ namespace WinampMigrator
 		}
 		public void Migrate()
 		{
+			int succeeded = 0;
+			int failed = 0;
 			using (BansheeDatabase banshee = new BansheeDatabase(bansheeDb, (playCountUpdateMode == PlaycountUpdateMode.Overwrite)))
 			using (Table tbl = new Table(databaseFiles))
 			{
@@ -97,6 +100,7 @@ namespace WinampMigrator
 					if (title == null || artist == null)
 					{
 						Logger.LogMessage(0, "Ignoring track since it lacks lacks title({0}) and/or artist({1})", title, artist);
+						failed++;
 						continue;
 					}
 							
@@ -107,13 +111,19 @@ namespace WinampMigrator
 						else
 						{
 							Logger.LogMessage(0, "{0} - {1} lacks album info. Use --allow-no-album to migrate this track anyway", artist, title);
+							failed++;
 							continue;
 						}
-					}
-					var track = banshee.GetTrack(title.Value, artist.Value, album.Value);
+					}					
+					BansheeTrack track;
+					if (album != null)
+						track = banshee.GetTrack(title.Value, artist.Value, album.Value);
+					else
+						track = banshee.GetTrack(title.Value, artist.Value);
 					if (track == null)
 					{
-						Logger.LogMessage(0, "Failed to find banshee track for {0} - {1} ({2})", artist, title, album);
+						Logger.LogMessage(0, "Failed to find banshee track for [{0}] - [{1}] [{2}]", artist, title, album);
+						failed++;
 						continue;
 					}
 					IntegerField ratingField = row.GetFieldByType(MetadataField.Rating) as IntegerField;
@@ -143,10 +153,16 @@ namespace WinampMigrator
 					else if (updateRating)
 						success = banshee.UpdateTrackRating(track.Id, rating);
 					if (success)
+					{
 						Logger.LogMessage(1, "SUCCEEDED: Updating {0}-{1}", artist.Value, title.Value);
+						succeeded++;
+					}
 					else
+					{
 						Logger.LogMessage(0, "FAILED: Updating {0}-{1}", artist.Value, title.Value);					
+					}
 				}
+				Logger.LogMessage(0, "All Done {0} tracks ({1:p}) successfully migrated ({2} ({3:p}) failed)", succeeded, succeeded / (double)tbl.NumFiles, failed, failed / (double)tbl.NumFiles);
 			}
 		}
 				
