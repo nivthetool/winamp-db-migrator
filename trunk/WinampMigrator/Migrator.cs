@@ -139,19 +139,33 @@ namespace WinampMigrator
 					
 					if (playCountUpdateMode != PlaycountUpdateMode.Ignore)
 						updatePlaycount = true;
-					if (ratingUpdateMode == RatingUpdateMode.OnlyEmpty)
-						updateRating = !track.HasRating;
-					else if (ratingUpdateMode == RatingUpdateMode.Overwrite)
-						updateRating = rating > 0;
-					else if (ratingUpdateMode == RatingUpdateMode.OverwriteAndClear)
-						updateRating = true;
-					bool success = true;	
+					switch(ratingUpdateMode)
+					{
+						case RatingUpdateMode.OnlyEmpty:
+							updateRating = !track.HasRating;
+							break;
+						case RatingUpdateMode.Overwrite:
+							updateRating = rating > 0;
+							break;
+						case RatingUpdateMode.OverwriteAndClear:
+							updateRating = true;
+							break;
+						default:
+							updateRating = false;
+					}
+					bool success = true;
 					if (updatePlaycount && updateRating)
 						success = banshee.UpdateTrack(track.Id, rating, playcount);
 					else if (updatePlaycount)
 						success = banshee.UpdateTrackPlaycount(track.Id, playcount);
 					else if (updateRating)
 						success = banshee.UpdateTrackRating(track.Id, rating);
+					else 
+					{
+						Logger.LogMessage(1, "Nothing to do for track [{0}] - [{1}] [{2}]", artist, title, album);
+						success = false;
+					}
+					
 					if (success)
 					{
 						Logger.LogMessage(1, "SUCCEEDED: Updating {0}-{1}", artist.Value, title.Value);

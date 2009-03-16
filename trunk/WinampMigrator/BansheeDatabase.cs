@@ -33,6 +33,7 @@ namespace WinampMigrator
 				Logger.LogMessage(0, "Failed to open banshee db: {0}", ex.InnerException != null ? ex.InnerException.Message : ex.Message);
 				throw new ApplicationException("Failed to open banshee db", ex);
 			}
+			
 			DatabaseFile = dbFile;
 			CreateCommands(overwritePlaycount);
 		}
@@ -141,12 +142,11 @@ namespace WinampMigrator
 			int albumId = GetAlbumId(album, artistId);
 			if (artistId < 0 || albumId < 0)
 				return null;
-			
-			Logger.LogMessage(2,"Fetching Track Info for {0}, {1}, {2}", title, artistId, albumId);
-			
+
 			((IDataParameter)selectCmd.Parameters["@title"]).Value = title;
 			((IDataParameter)selectCmd.Parameters["@artist"]).Value = artistId;
 			((IDataParameter)selectCmd.Parameters["@album"]).Value = albumId;
+			LogCommand(selectCmd);
 			using (var reader = selectCmd.ExecuteReader())
 			{
 				if (reader.Read())
@@ -175,11 +175,10 @@ namespace WinampMigrator
 			if (artistId < 0)
 				return null;
 			
-			Logger.LogMessage(2,"Fetching Track Info for {0}, {1}", title, artistId);
-			
-			((IDataParameter)selectCmd.Parameters["@title"]).Value = title;
-			((IDataParameter)selectCmd.Parameters["@artist"]).Value = artistId;
-			using (var reader = selectCmd.ExecuteReader())
+			((IDataParameter)select2Cmd.Parameters["@title"]).Value = title;
+			((IDataParameter)select2Cmd.Parameters["@artist"]).Value = artistId;
+			LogCommand(select2Cmd);
+			using (var reader = select2Cmd.ExecuteReader())
 			{
 				if (reader.Read())
 				{
@@ -191,6 +190,7 @@ namespace WinampMigrator
 			}
 			return null;
 		}
+		
 		/// <summary>
 		/// Updates the track information with the specified rating and playcount
 		/// </summary>
@@ -202,8 +202,6 @@ namespace WinampMigrator
 		/// </returns>
 		public bool UpdateTrack(int trackID, int rating, int playcount)
 		{
-			Logger.LogMessage(2,"Updating track {0} with rating={1}, playcount={2}", trackID, rating, playcount);
-			
 			((IDataParameter)updateAllCmd.Parameters["@rating"]).Value = rating;
 			((IDataParameter)updateAllCmd.Parameters["@playcount"]).Value = playcount;
 			((IDataParameter)updateAllCmd.Parameters["@trackid"]).Value = trackID;
@@ -215,10 +213,9 @@ namespace WinampMigrator
 		/// </summary>
 		public bool UpdateTrackRating(int trackID, int rating)
 		{
-			Logger.LogMessage(2,"Updating track {0} with rating={1}", trackID, rating);
-			
 			((IDataParameter)updateRatingCmd.Parameters["@rating"]).Value = rating;
 			((IDataParameter)updateRatingCmd.Parameters["@trackid"]).Value = trackID;
+			
 			return RunUpdateCommand(updateRatingCmd);
 		}
 		
@@ -227,18 +224,17 @@ namespace WinampMigrator
 		/// </summary>
 		public bool UpdateTrackPlaycount(int trackID, int playcount)
 		{
-			Logger.LogMessage(2,"Updating track {0} with playcount={1}", trackID, playcount);
-			
 			((IDataParameter)updatePlaycountCmd.Parameters["@playcount"]).Value = playcount;
 			((IDataParameter)updatePlaycountCmd.Parameters["@trackid"]).Value = trackID;
+			
 			return RunUpdateCommand(updatePlaycountCmd);	
 		}
 		
 		private bool RunUpdateCommand(IDbCommand cmd)
-		{
+		{			
+			LogCommand(cmd);	
 			if (DryRun)
 				return true;
-			
 			var rowsAffected = cmd.ExecuteNonQuery();
 			if (rowsAffected == 1)
 				return true;
@@ -252,7 +248,7 @@ namespace WinampMigrator
 		private int GetArtistId(string name)
 		{
 			((IDataParameter)selectArtistCmd.Parameters["@name"]).Value = name;
-			Logger.LogMessage(3, "Fetching artist id for {0}", name);
+			LogCommand(selectArtistCmd);
 			object val = selectArtistCmd.ExecuteScalar();
 			if (val == null)
 			{
@@ -273,11 +269,13 @@ namespace WinampMigrator
 
 			((SqliteParameter)selectAlbumCmd.Parameters["@artist"]).Value = artistId;
 			((SqliteParameter)selectAlbumCmd.Parameters["@title"]).Value = albumTitle;
-			selectAlbumCmd.Connection = dbConn;
-			
+			LogCommand(selectAlbumCmd);			
 			object val = selectAlbumCmd.ExecuteScalar();
 			if (val == null)
+			{
+				Logger.LogMessage(0, "WRN couldn't find album id for {0}", albumTitle);
 				return -1;
+			}
 			int albumId;
 			if (Int32.TryParse(val.ToString(), out albumId))
 				return albumId;
@@ -290,6 +288,16 @@ namespace WinampMigrator
 		public void Close()
 		{
 			Dispose(true);
+		}
+
+		private void LogCommand(IDbCommand cmd)
+		{		
+			System.Text.StringBuilder sb = new System.Text.StringBuilder(cmd.CommandText);
+			foreach (SqliteParameter param in cmd.Parameters)
+			{				
+				sb.Replace(param.ParameterName, param.Value.ToString());				
+			}
+			Logger.LogMessage(2, sb.ToString());
 		}
 		
 		#region	IDisposable Members
