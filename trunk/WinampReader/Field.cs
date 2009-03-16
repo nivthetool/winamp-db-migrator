@@ -146,6 +146,8 @@ namespace WinampReader
 
             // For now, assume BOM mark is there and specifies LittleEndian UTF-16 (it is on my machine)
             Value = Encoding.Unicode.GetString(data, 2, data.Length - 2);
+			if (Value != null)
+				Value = Value.Trim();
         }
 
 		/// <value>
