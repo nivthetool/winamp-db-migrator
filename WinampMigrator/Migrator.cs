@@ -8,8 +8,10 @@ namespace WinampMigrator
 	public class Migrator
 	{
 		public static string ProgramName { get { return "winamp-migrator"; } }
-		private bool dryRun		= true;
-		private bool dumpData 	= false;		
+		private bool dryRun		  = true;
+		private bool dumpData 	  = false;
+		private bool doBackup	  = true;
+		private bool allowNoAlbum = false;
 		private PlaycountUpdateMode playCountUpdateMode = PlaycountUpdateMode.Add;
 		private RatingUpdateMode ratingUpdateMode = RatingUpdateMode.OnlyEmpty;
 		private string bansheeDb;
@@ -76,26 +78,44 @@ namespace WinampMigrator
 				Logger.LogMessage(1, "Setting DryRun to {0}", dryRun);
 				Logger.LogMessage(1, "Setting PlayCountUpdateMode to: {0}", playCountUpdateMode);
 				Logger.LogMessage(1, "Setting RatingUpdateMode to: {0}", ratingUpdateMode);
+				Logger.LogMessage(1, "Backing up Banshee DB: {0}", dryRun ? "Not Needed" : doBackup ? "Yes" : "No");
 				Console.WriteLine("Press RETURN to migrate data or CTRL+C to abort now");
 				Console.ReadLine();
 				
 				banshee.DryRun = dryRun;
+				if (doBackup && !dryRun)
+				{
+					string copy = banshee.CreateBackup();
+					Logger.LogMessage(1, "Backup of db created as {0}", copy);
+				}
 				foreach (Record row in tbl.Records)
 				{
 					StringField title  = row.GetFieldByType(MetadataField.Title) as StringField;
 					StringField artist = row.GetFieldByType(MetadataField.Artist) as StringField;
 					StringField album  = row.GetFieldByType(MetadataField.Album) as StringField;
-					if (title == null || artist == null || album == null)
+					
+					if (title == null || artist == null)
 					{
-						Logger.LogMessage(0, "Record does not contain title, artist & album");
+						Logger.LogMessage(0, "Ignoring track since it lacks lacks title({0}) and/or artist({1})", title, artist);
 						continue;
+					}
+							
+					if (album == null)
+					{
+						if (allowNoAlbum)
+							Logger.LogMessage(1, "{0} - {1} has no album info, but proceeding anyway", artist, title);
+						else
+						{
+							Logger.LogMessage(0, "{0} - {1} lacks album info. Use --allow-no-album to migrate this track anyway", artist, title);
+							continue;
+						}
 					}
 					var track = banshee.GetTrack(title.Value, artist.Value, album.Value);
 					if (track == null)
 					{
 						Logger.LogMessage(0, "Failed to find banshee track for {0} - {1} ({2})", artist, title, album);
 						continue;
-					}					
+					}
 					IntegerField ratingField = row.GetFieldByType(MetadataField.Rating) as IntegerField;
 					IntegerField playcountField = row.GetFieldByType(MetadataField.PlayCount) as IntegerField;
 					int rating = 0;
@@ -158,8 +178,10 @@ namespace WinampMigrator
 				{ "dry-run", "Don't write to Banshee DB, only simulate", v => dryRun = true },
 				{ "h|help", "Show this help and then exit", v => show_help = (v != null) },
 				{ "dump-data", "Dump WinAmp data to stdout and exit", v => dumpData = true },
+				{ "allow-no-album", "Use title+artist matching if album isn't set", v => allowNoAlbum = true },
+				{ "backup-db", "Create a backup copy of the Banshee db before modifying it", v => doBackup = true },
 				{ "banshee-db=", "Specify the banshee db (default is $XDG_CONFIG_HOME/banshee-1/banshee.db)", v => bansheeDb = v },
-				{ "update-playcount=", "Specifies how & if banshee's playcount is with updated ('ignore', 'overwrite', 'add' (default))", 
+				{ "update-playcount=", "Specifies how & if banshee's playcount is updated ('ignore', 'overwrite', 'add' (default))", 
 					v => 
 					{
 						if (v == null)
@@ -241,16 +263,22 @@ namespace WinampMigrator
 			Console.WriteLine("Usage: {0} [OPTIONS] <WinampDb> [<WinampDbIndex>]", ProgramName);
 			Console.WriteLine(" Where OPTIONS is one or more of the following:");
 			opts.WriteOptionDescriptions(Console.Out);
-			Console.WriteLine(" Ratings can be updated in four modes:");
-			Console.WriteLine("  - Ignore: 		no updates to rating will be done");
-			Console.WriteLine("  - Overwrite: 	All ratings found in Winamp will be forced into Banshee");
-			Console.WriteLine("  - OverwriteAndClear: Same as 'Overwrite' but will also clear ratings in Banshee where no rating exists in Winamp");
-			Console.WriteLine("  - OnlyEmpty:	Only tracks which has no rating in banshee will be updated. (default)");
-			Console.WriteLine(" PlayCount can be updated in three modes:");
-			Console.WriteLine("  - Ignore:		no updates to playcount will be done");
-			Console.WriteLine("  - Overwrite: 	Winamp playcount will be forced into Banshee");
-			Console.WriteLine("  - Add:			Winamp playcount will be added to the Banshee playcount (default)");
+			
+			Console.WriteLine("Ratings can be updated in four modes:");
+			Console.WriteLine("  Ignore:            no updates to rating will be done");
+			Console.WriteLine("  Overwrite:         All ratings found in Winamp will be forced into Banshee");
+			Console.WriteLine("  OverwriteAndClear: Same as 'Overwrite' but will also clear ratings");
+			Console.WriteLine("                     in Banshee where no rating exists in Winamp");
+			Console.WriteLine("  OnlyEmpty:         Only tracks which has no rating in banshee will");
+			Console.WriteLine("                     be updated. (default)");
+			
+			Console.WriteLine("PlayCount can be updated in three modes:");
+			Console.WriteLine("  Ignore:            No updates to playcount will be done");
+			Console.WriteLine("  Overwrite:         Winamp playcount will be forced into Banshee");
+			Console.WriteLine("  Add:               Winamp playcount will be added to the Banshee");
+			Console.WriteLine("                     playcount (default)");
 			Console.WriteLine();
+			
 			Console.WriteLine("If no WinampDbIndex is specified, it is assumed to reside in the same directory as the WinampDB and have the extension .idx");
 		}
 		

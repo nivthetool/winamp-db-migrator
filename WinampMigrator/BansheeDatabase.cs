@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using Mono.Data.Sqlite;
 
 namespace WinampMigrator
@@ -21,7 +22,7 @@ namespace WinampMigrator
 		
 		public BansheeDatabase(string dbFile, bool overwritePlaycount)
 		{
-			Logger.LogMessage(1, "Loading Banshee DB: {0}", dbFile);
+			Logger.LogMessage(1, "Loading Banshee DB: {0}", dbFile);			
 			try
 			{
 				dbConn = new SqliteConnection (String.Format ("Version=3,URI=file:{0}", dbFile));								
@@ -32,6 +33,7 @@ namespace WinampMigrator
 				Logger.LogMessage(0, "Failed to open banshee db: {0}", ex.InnerException != null ? ex.InnerException.Message : ex.Message);
 				throw new ApplicationException("Failed to open banshee db", ex);
 			}
+			DatabaseFile = dbFile;
 			CreateCommands(overwritePlaycount);
 		}
 		
@@ -83,6 +85,30 @@ namespace WinampMigrator
 			commands.Add(updateRatingCmd);			
 		}
 		
+		public string DatabaseFile { get; private set; }
+		/// <summary>
+		/// Creates a copy of the current banshee database. The name of the copy is returned
+		/// </summary>
+		/// <returns>
+		/// The full path to the newly created copy, or null if no copy could be created.
+		/// </returns>
+		public string CreateBackup()
+		{
+		 	string dir = Path.GetDirectoryName(DatabaseFile);
+			// Append 1/10th sec count to filename
+			string copy = Path.Combine(dir, String.Format("banshee.db.backup.{0}", DateTime.Now.Ticks / 1000));
+			try
+			{
+				Logger.LogMessage(2, "Backing up banshee db [{0}] as [{1}]", DatabaseFile, copy);
+				File.Copy(DatabaseFile, copy);
+			}
+			catch (Exception ex)
+			{
+				Logger.LogMessage(0, "Failed to backup banshee db: {0}", ex.Message);
+				return null;
+			}
+			return copy;
+		}
 		/// <value>
 		/// Gets or sets a value indicating whether updates to the db should be applied (false) or if just simulated (true)
 		/// </value>
