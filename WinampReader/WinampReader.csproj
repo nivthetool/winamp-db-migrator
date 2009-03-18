@@ -80,7 +80,7 @@
             <CommitMessageStyle Indent="	" FileSeparator=", " />
           </VersionControlPolicy>
           <StandardHeader inheritsSet="GPLv2License" />
-          <ChangeLogPolicy UpdateMode="ProjectRoot" inheritsSet="Mono">
+          <ChangeLogPolicy UpdateMode="ProjectRoot" VcsIntegration="None" inheritsSet="Mono">
             <MessageStyle LineAlign="0" />
           </ChangeLogPolicy>
         </Policies>

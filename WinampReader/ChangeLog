@@ -1,12 +1,7 @@
 2009-03-18  Isak Savo  <isak.savo@gmail.com>
 
-	* Track.cs:
-	* ChangeLog:
-	* WinampReader.csproj: 
-
-2009-03-18  Isak Savo  <isak.savo@gmail.com>
-
 	* Track.cs: New class to hold track information
+	* AssemblyInfo.cs: Update metadata and set version to 0.2
 
 2009-03-16  Isak Savo <isak.savo@gmail.com>
 
