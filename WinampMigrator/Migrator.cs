@@ -82,6 +82,7 @@ namespace WinampMigrator
 				Logger.LogMessage(1, "Setting PlayCountUpdateMode to: {0}", playCountUpdateMode);
 				Logger.LogMessage(1, "Setting RatingUpdateMode to: {0}", ratingUpdateMode);
 				Logger.LogMessage(1, "Backing up Banshee DB: {0}", dryRun ? "Not Needed" : doBackup ? "Yes" : "No");
+				
 				Console.WriteLine("Press RETURN to migrate data or CTRL+C to abort now");
 				Console.ReadLine();
 				
@@ -93,47 +94,38 @@ namespace WinampMigrator
 				}
 				foreach (Record row in tbl.Records)
 				{
-					StringField title  = row.GetFieldByType(MetadataField.Title) as StringField;
-					StringField artist = row.GetFieldByType(MetadataField.Artist) as StringField;
-					StringField album  = row.GetFieldByType(MetadataField.Album) as StringField;
+					Track winampTrack = new Track(row);
+					BansheeTrack bansheeTrack;
 					
-					if (title == null || artist == null)
+					if (winampTrack.Title == null || winampTrack.Artist == null)
 					{
-						Logger.LogMessage(0, "Ignoring track since it lacks lacks title({0}) and/or artist({1})", title, artist);
+						Logger.LogMessage(0, "Ignoring track since it doesn't contain neccessary information {0}", winampTrack);
 						failed++;
 						continue;
 					}
 							
-					if (album == null)
+					if (winampTrack.Album == null)
 					{
 						if (allowNoAlbum)
-							Logger.LogMessage(1, "{0} - {1} has no album info, but proceeding anyway", artist, title);
+							Logger.LogMessage(1, "{0} - {1} has no album info, but proceeding anyway", winampTrack.Album, winampTrack.Title);
 						else
 						{
-							Logger.LogMessage(0, "{0} - {1} lacks album info. Use --allow-no-album to migrate this track anyway", artist, title);
+							Logger.LogMessage(0, "{0} - {1} lacks album info. Use --allow-no-album to migrate this track anyway", winampTrack.Artist, winampTrack.Title);
 							failed++;
 							continue;
 						}
-					}					
-					BansheeTrack track;
-					if (album != null)
-						track = banshee.GetTrack(title.Value, artist.Value, album.Value);
+					}
+					
+					if (winampTrack.Album != null)
+						bansheeTrack = banshee.GetTrack(winampTrack.Title, winampTrack.Artist, winampTrack.Album);
 					else
-						track = banshee.GetTrack(title.Value, artist.Value);
-					if (track == null)
+						bansheeTrack = banshee.GetTrack(winampTrack.Title, winampTrack.Artist);
+					if (bansheeTrack == null)
 					{
-						Logger.LogMessage(0, "Failed to find banshee track for [{0}] - [{1}] [{2}]", artist, title, album);
+						Logger.LogMessage(0, "Failed to find banshee track for winamp track {0}", winampTrack);
 						failed++;
 						continue;
 					}
-					IntegerField ratingField = row.GetFieldByType(MetadataField.Rating) as IntegerField;
-					IntegerField playcountField = row.GetFieldByType(MetadataField.PlayCount) as IntegerField;
-					int rating = 0;
-					int playcount = 0;
-					if (ratingField != null)
-						rating = ratingField.Value;
-					if (playcountField != null)
-						playcount = playcountField.Value;
 					bool updateRating = false;
 					bool updatePlaycount = false;
 					
@@ -142,38 +134,39 @@ namespace WinampMigrator
 					switch(ratingUpdateMode)
 					{
 						case RatingUpdateMode.OnlyEmpty:
-							updateRating = !track.HasRating;
+							updateRating = !bansheeTrack.HasRating && winampTrack.Rating != null;
 							break;
 						case RatingUpdateMode.Overwrite:
-							updateRating = rating > 0;
+							updateRating = winampTrack.Rating != null;
 							break;
 						case RatingUpdateMode.OverwriteAndClear:
 							updateRating = true;
 							break;
 						default:
 							updateRating = false;
+							break;
 					}
 					bool success = true;
 					if (updatePlaycount && updateRating)
-						success = banshee.UpdateTrack(track.Id, rating, playcount);
+						success = banshee.UpdateTrack(bansheeTrack.Id, winampTrack.Rating.Value, winampTrack.PlayCount);
 					else if (updatePlaycount)
-						success = banshee.UpdateTrackPlaycount(track.Id, playcount);
+						success = banshee.UpdateTrackPlaycount(bansheeTrack.Id, winampTrack.PlayCount);
 					else if (updateRating)
-						success = banshee.UpdateTrackRating(track.Id, rating);
+						success = banshee.UpdateTrackRating(bansheeTrack.Id, winampTrack.Rating.Value);
 					else 
 					{
-						Logger.LogMessage(1, "Nothing to do for track [{0}] - [{1}] [{2}]", artist, title, album);
+						Logger.LogMessage(1, "Nothing to do for track {0}", winampTrack);
 						success = false;
 					}
 					
 					if (success)
 					{
-						Logger.LogMessage(1, "SUCCEEDED: Updating {0}-{1}", artist.Value, title.Value);
+						Logger.LogMessage(1, "SUCCEEDED: Updating {0}-{1}", winampTrack.Artist, winampTrack.Album);
 						succeeded++;
 					}
 					else
 					{
-						Logger.LogMessage(0, "FAILED: Updating {0}-{1}", artist.Value, title.Value);					
+						Logger.LogMessage(0, "FAILED: Updating {0}-{1}", winampTrack.Artist, winampTrack.Album);		
 					}
 				}
 				Logger.LogMessage(0, "All Done {0} tracks ({1:p}) successfully migrated ({2} ({3:p}) failed)", succeeded, succeeded / (double)tbl.NumFiles, failed, failed / (double)tbl.NumFiles);

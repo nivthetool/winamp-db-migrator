@@ -1,3 +1,13 @@
+2009-03-18  Isak Savo  <isak.savo@gmail.com>
+
+	* Track.cs:
+	* ChangeLog:
+	* WinampReader.csproj: 
+
+2009-03-18  Isak Savo  <isak.savo@gmail.com>
+
+	* Track.cs: New class to hold track information
+
 2009-03-16  Isak Savo <isak.savo@gmail.com>
 
 	* Field.cs: Trim the value of StringFields (Banshee does this when importing tracks)

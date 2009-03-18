@@ -58,6 +58,7 @@
     <Compile Include="Record.cs" />
     <Compile Include="RecordEnumerator.cs" />
     <Compile Include="Table.cs" />
+    <Compile Include="Track.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
@@ -74,10 +75,12 @@
     <MonoDevelop>
       <Properties>
         <Policies>
+          <TextStylePolicy FileWidth="120" TabWidth="4" TabsToSpaces="False" NoTabsAfterNonTabs="False" RemoveTrailingWhitespace="True" />
           <VersionControlPolicy inheritsSet="Mono">
             <CommitMessageStyle Indent="	" FileSeparator=", " />
           </VersionControlPolicy>
-          <ChangeLogPolicy UpdateMode="Nearest" VcsIntegration="None" inheritsSet="Mono">
+          <StandardHeader inheritsSet="GPLv2License" />
+          <ChangeLogPolicy UpdateMode="ProjectRoot" inheritsSet="Mono">
             <MessageStyle LineAlign="0" />
           </ChangeLogPolicy>
         </Policies>
