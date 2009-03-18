@@ -265,8 +265,6 @@ namespace WinampMigrator
 		
 		private int GetAlbumId(string albumTitle, int artistId)
 		{
-			Logger.LogMessage(3, "Fetching album id for {0} (artist = {1})", albumTitle, artistId);
-
 			((SqliteParameter)selectAlbumCmd.Parameters["@artist"]).Value = artistId;
 			((SqliteParameter)selectAlbumCmd.Parameters["@title"]).Value = albumTitle;
 			LogCommand(selectAlbumCmd);			
@@ -297,7 +295,7 @@ namespace WinampMigrator
 			{				
 				sb.Replace(param.ParameterName, param.Value.ToString());				
 			}
-			Logger.LogMessage(2, sb.ToString());
+			Logger.LogMessage(3, sb.ToString());
 		}
 		
 		#region	IDisposable Members
