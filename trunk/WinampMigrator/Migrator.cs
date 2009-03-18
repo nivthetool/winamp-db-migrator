@@ -8,7 +8,7 @@ namespace WinampMigrator
 	public class Migrator
 	{
 		public static string ProgramName { get { return "winamp-migrator"; } }
-		private bool dryRun		  = true;
+		private bool dryRun		  = false;
 		private bool dumpData 	  = false;
 		private bool doBackup	  = true;
 		private bool allowNoAlbum = false;
@@ -83,9 +83,9 @@ namespace WinampMigrator
 				Logger.LogMessage(1, "Setting RatingUpdateMode to: {0}", ratingUpdateMode);
 				Logger.LogMessage(1, "Backing up Banshee DB: {0}", dryRun ? "Not Needed" : doBackup ? "Yes" : "No");
 				
-				Console.WriteLine("Press RETURN to migrate data or CTRL+C to abort now");
+				Console.Error.WriteLine("Press RETURN to migrate data or CTRL+C to abort now");
 				Console.ReadLine();
-				
+				Console.Error.WriteLine("Starting migration {0}", dryRun ? "SIMULATION" : "FOR REAL");
 				banshee.DryRun = dryRun;
 				if (doBackup && !dryRun)
 				{
@@ -161,12 +161,12 @@ namespace WinampMigrator
 					
 					if (success)
 					{
-						Logger.LogMessage(1, "SUCCEEDED: Updating {0}-{1}", winampTrack.Artist, winampTrack.Album);
+						Logger.LogMessage(1, "SUCCEEDED: Updating {0}-{1}", winampTrack.Artist, winampTrack.Title);
 						succeeded++;
 					}
 					else
 					{
-						Logger.LogMessage(0, "FAILED: Updating {0}-{1}", winampTrack.Artist, winampTrack.Album);		
+						Logger.LogMessage(0, "FAILED: Updating {0}-{1}", winampTrack.Artist, winampTrack.Title);		
 					}
 				}
 				Logger.LogMessage(0, "All Done {0} tracks ({1:p}) successfully migrated ({2} ({3:p}) failed)", succeeded, succeeded / (double)tbl.NumFiles, failed, failed / (double)tbl.NumFiles);
