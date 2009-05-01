@@ -81,9 +81,13 @@ namespace WinampReader
         {
             reader.BaseStream.Seek(position + sizeof(byte), SeekOrigin.Begin);
             byte b = reader.ReadByte();
-            if (b == 2)
+            if (b == 2) 
+			{
                 // Special redirection type
+				Console.Error.WriteLine("ERR: Redirection fields are not supported");
                 Debugger.Break();
+				return null;
+			}
             if (!Enum.IsDefined(typeof(FieldType), b))
                 return null;
             Field retval = null;
